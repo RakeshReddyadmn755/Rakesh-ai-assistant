@@ -1,0 +1,15 @@
+.chat-container {
+  width: 600px;
+  margin: auto;
+  padding: 20px;
+  font-family: sans-serif;
+}
+#chat-box {
+  height: 400px;
+  overflow-y: scroll;
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.user-msg { color: blue; margin-top: 5px; }
+.ai-msg { color: green; margin-top: 5px; }

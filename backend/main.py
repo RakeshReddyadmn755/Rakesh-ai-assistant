@@ -2,14 +2,13 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from chat import ask_question
 import uvicorn
-import os
 
 app = FastAPI()
 
-# CORS should be declared before routes
+# Allow CORS for all origins temporarily (replace * with frontend URL in prod)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with specific domain in production
+    allow_origins=["*"],  # Replace with ["https://your-frontend.vercel.app"] in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,13 +19,15 @@ async def ask(request: Request):
     try:
         data = await request.json()
         question = data.get("question", "").strip()
+
         if not question:
             return {"error": "Question is required."}
 
         answer = ask_question(question)
-        return {"answer": answer}
 
+        return {"answer": answer}
     except Exception as e:
+        print(f"[ERROR] /ask endpoint failed: {str(e)}")
         return {"error": f"Internal Server Error: {str(e)}"}
 
 if __name__ == "__main__":

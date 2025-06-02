@@ -2,24 +2,33 @@ from vector_store import get_collection
 import openai
 import os
 
+# Set your OpenAI key from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def ask_question(question):
-    collection = get_collection()
-    results = collection.query(query_texts=[question], n_results=3)
-    context = "\n".join(results['documents'][0])
+    try:
+        if not openai.api_key:
+            raise ValueError("OpenAI API key is not set.")
 
-    prompt = f"""You are a helpful assistant. Answer the question using the context below.
+        # Retrieve vector collection
+        collection = get_collection()
+        results = collection.query(query_texts=[question], n_results=3)
 
-Context:
-{context}
+        # Build context from top results
+        context = "\n".join(results['documents'][0]) if results and results.get('documents') else "No context found."
 
-Question:
-{question}
-"""
+        prompt = f"""
+        You are a helpful AI assistant for SRE documentation. Answer the question below using the provided context.
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+        Context:
+        {context}
+
+        Question:
+        {question}
+        """
+
+        # Call OpenAI's GPT model
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )

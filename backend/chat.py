@@ -1,37 +1,33 @@
 import os
-import openai
-from vector_store import search_similar_docs
+from openai import OpenAI
 
-# Set the OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize the OpenAI client with API key from environment
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def ask_question(query: str) -> str:
+def ask_openai(question: str) -> str:
     """
-    Combines semantic search with GPT-4 to answer a user's question.
+    Sends a prompt to the OpenAI chat completion API and returns the response.
+
+    Args:
+        question (str): The user question.
+
+    Returns:
+        str: The assistant's reply or error message.
     """
     try:
-        # Step 1: Semantic search
-        context_chunks = search_similar_docs(query)
-        context_text = "\n\n".join(context_chunks) if context_chunks else "No relevant documents found."
-
-        # Step 2: Generate answer with GPT-4
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful internal SRE assistant. Answer based on the Confluence documentation provided."
-            },
-            {
-                "role": "user",
-                "content": f"Context:\n{context_text}\n\nQuestion:\n{query}"
-            }
-        ]
-
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
-            messages=messages,
-            temperature=0.3
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert Site Reliability Engineering (SRE) assistant that answers questions based on internal Confluence documentation and best practices."
+                },
+                {
+                    "role": "user",
+                    "content": question
+                }
+            ]
         )
         return response.choices[0].message.content.strip()
-
     except Exception as e:
-        return f"[ERROR] Could not generate answer: {str(e)}"
+        return f"[ERROR] Could not generate answer: {e}"

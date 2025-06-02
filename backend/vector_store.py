@@ -1,56 +1,46 @@
-import os
 import chromadb
-from chromadb.utils import embedding_functions
+from chromadb.config import Settings
 from document_loader import load_documents
 import openai
+import os
 
-# Load OpenAI API key from environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Initialize embedding function with OpenAI
-embed_fn = embedding_functions.OpenAIEmbeddingFunction(
-    model_name="text-embedding-3-small",
-    api_key=openai.api_key
-)
+# Define manual embedding function using OpenAI API directly
+def embed_fn(texts: list[str]) -> list[list[float]]:
+    response = openai.Embedding.create(
+        model="text-embedding-3-small",
+        input=texts
+    )
+    return [d["embedding"] for d in response["data"]]
 
-# Initialize Chroma in-memory client
-client = chromadb.Client()
+# Initialize Chroma DB client
+client = chromadb.Client(Settings(anonymized_telemetry=False))
 
-# Get or create a persistent collection for Confluence docs
+# Use the manual embedding function
 collection = client.get_or_create_collection(
     name="confluence-docs",
     embedding_function=embed_fn
 )
 
 def ingest_documents():
-    """
-    Loads and indexes documents from the /docs directory into the vector DB.
-    Skips loading if documents are already present.
-    """
-    try:
-        existing_ids = collection.get()['ids']
-        if not existing_ids:
-            docs = load_documents()
-            if docs:
-                for idx, doc in enumerate(docs):
-                    collection.add(documents=[doc], ids=[str(idx)])
-                print(f"[INFO] Loaded {len(docs)} documents into vector store.")
-            else:
-                print("[WARN] No documents found. Ensure /docs has valid HTML files.")
-    except Exception as e:
-        print(f"[ERROR] Failed to ingest documents: {e}")
+    existing_ids = collection.get()['ids']
+    if not existing_ids:
+        docs = load_documents()
+        if docs:
+            for idx, doc in enumerate(docs):
+                collection.add(documents=[doc], ids=[str(idx)])
+            print(f"[INFO] Loaded {len(docs)} documents into vector DB.")
+        else:
+            print("[WARN] No documents loaded. Check /docs folder.")
 
 def search_similar_docs(query: str, top_k: int = 5) -> list[str]:
-    """
-    Performs semantic search over the vector store using the given query.
-    Returns the top_k most similar document chunks.
-    """
     try:
         results = collection.query(
             query_texts=[query],
             n_results=top_k
         )
-        return results["documents"][0] if results and "documents" in results else []
+        return results["documents"][0] if results["documents"] else []
     except Exception as e:
         print(f"[ERROR] Failed to search documents: {e}")
         return []

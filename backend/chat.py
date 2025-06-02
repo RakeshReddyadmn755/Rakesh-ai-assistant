@@ -1,18 +1,12 @@
 import os
 from openai import OpenAI
 
-# Initialize the OpenAI client with API key from environment
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Only set API key through environment variable or default config
+client = OpenAI()
 
 def ask_openai(question: str) -> str:
     """
-    Sends a prompt to the OpenAI chat completion API and returns the response.
-
-    Args:
-        question (str): The user question.
-
-    Returns:
-        str: The assistant's reply or error message.
+    Sends a question to the OpenAI API and returns the response.
     """
     try:
         response = client.chat.completions.create(
@@ -20,7 +14,7 @@ def ask_openai(question: str) -> str:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert Site Reliability Engineering (SRE) assistant that answers questions based on internal Confluence documentation and best practices."
+                    "content": "You are an expert SRE assistant that answers questions from internal Confluence documentation."
                 },
                 {
                     "role": "user",
@@ -28,6 +22,6 @@ def ask_openai(question: str) -> str:
                 }
             ]
         )
-        return response.choices[0].message.content.strip()
+        return response.choices[0].message.content
     except Exception as e:
         return f"[ERROR] Could not generate answer: {e}"

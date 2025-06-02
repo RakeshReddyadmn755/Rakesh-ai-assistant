@@ -1,25 +1,37 @@
 import os
-from openai import OpenAI
+import openai
+from vector_store import search_similar_docs
 
-# Initialize the OpenAI client using the environment variable
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Set the OpenAI API key
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def ask_openai(question: str) -> str:
+def ask_question(query: str) -> str:
     """
-    Sends a question to the OpenAI API and returns the response.
-
-    Args:
-        question (str): The user input question.
-
-    Returns:
-        str: The AI-generated response or an error message.
+    Combines semantic search with GPT-4 to answer a user's question.
     """
     try:
-        response = client.chat.completions.create(
+        # Step 1: Semantic search
+        context_chunks = search_similar_docs(query)
+        context_text = "\n\n".join(context_chunks) if context_chunks else "No relevant documents found."
+
+        # Step 2: Generate answer with GPT-4
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful internal SRE assistant. Answer based on the Confluence documentation provided."
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context_text}\n\nQuestion:\n{query}"
+            }
+        ]
+
+        response = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert SRE assistant that answers questions from internal Confluence documentation."},
-                {"role": "user", "content": question}
-            ]
+            messages=messages,
+            temperature=0.3
         )
-        return response.choices[0].messa
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        return f"[ERROR] Could not generate answer: {str(e)}"

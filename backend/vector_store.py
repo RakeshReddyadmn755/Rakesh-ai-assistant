@@ -7,28 +7,26 @@ import os
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ✅ Define a class that conforms to Chroma's EmbeddingFunction interface
+# ✅ Embedding function with correct parameter name
 class OpenAIEmbeddingFunction(EmbeddingFunction):
-    def __call__(self, texts: list[str]) -> list[list[float]]:
+    def __call__(self, input: list[str]) -> list[list[float]]:
         response = openai.Embedding.create(
             model="text-embedding-3-small",
-            input=texts
+            input=input
         )
         return [d["embedding"] for d in response["data"]]
 
-# ✅ Instantiate embedding function
+# ✅ Instantiate Chroma client
+client = chromadb.Client(Settings(anonymized_telemetry=False))
 embed_fn = OpenAIEmbeddingFunction()
 
-# ✅ Initialize Chroma client with settings
-client = chromadb.Client(Settings(anonymized_telemetry=False))
-
-# ✅ Get or create collection with compliant embedding function
+# ✅ Get or create collection
 collection = client.get_or_create_collection(
     name="confluence-docs",
     embedding_function=embed_fn
 )
 
-# ✅ Load docs once into vector store
+# ✅ Load docs if not already present
 def ingest_documents():
     existing_ids = collection.get()['ids']
     if not existing_ids:
@@ -40,7 +38,7 @@ def ingest_documents():
         else:
             print("[WARN] No documents loaded. Check /docs folder.")
 
-# ✅ Vector search
+# ✅ Vector similarity search
 def search_similar_docs(query: str, top_k: int = 5) -> list[str]:
     try:
         results = collection.query(
